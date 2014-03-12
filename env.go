@@ -29,6 +29,14 @@ func (e *Env) Header() http.Header {
 	return e.w.Header()
 }
 
+func (e *Env) SetContentType(tp string) {
+	e.w.Header().Set("Content-type", tp)
+}
+
+func (e *Env) SetContentJson() {
+	e.w.Header().Set("Content-type", "application/json; charset=utf-8")
+}
+
 func (e *Env) SetStatus(status int) {
 	e.Status = status
 }
@@ -38,30 +46,38 @@ func (e *Env) Write(v interface{}) {
 		return
 	}
 
-	e.finished = true
-
 	buf, err := json.Marshal(v)
 	if err != nil {
-		http.Error(e.w, err.Error(), http.StatusInternalServerError)
+		e.WriteError(http.StatusInternalServerError, err)
+	} else {
+		e.SetContentJson()
+
+		e.WriteBuffer(buf)
+	}
+}
+
+func (e *Env) WriteString(data string) {
+	if e.finished {
 		return
 	}
 
-	e.w.Header().Set("Content-type", "application/json; charset=utf-8")
-
-	e.w.WriteHeader(e.Status)
-	e.w.Write(buf)
+	e.WriteBuffer([]byte(data))
 }
 
-func (e *Env) WriteError(status int, message string, result ...string) {
-	var r string
-	if len(result) == 0 || len(result[0]) == 0 {
-		r = http.StatusText(status)
-	} else {
-		r = result[0]
+func (e *Env) WriteBuffer(data []byte) {
+	if e.finished {
+		return
 	}
 
+	e.finished = true
+
+	e.w.WriteHeader(e.Status)
+	e.w.Write(data)
+}
+
+func (e *Env) WriteError(status int, err error) {
 	e.Status = status
-	e.Write(&HTTPError{status, message, r})
+	e.WriteString(err.Error())
 }
 
 func (e *Env) finish() {

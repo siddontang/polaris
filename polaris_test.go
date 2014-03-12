@@ -38,8 +38,19 @@ func (h *TestHandler2) Get(env *Env, id string) {
 type TestHandler3 struct {
 }
 
+type TestHTTPError struct {
+	Status  int    `json:"-"`
+	Message string `json:"msg:`
+	Result  string `json:"result"`
+}
+
+func (e TestHTTPError) Error() string {
+	buf, _ := json.Marshal(e)
+	return string(buf)
+}
+
 func (h *TestHandler3) Get(env *Env) {
-	env.WriteError(http.StatusForbidden, "forbidden")
+	env.WriteError(http.StatusForbidden, TestHTTPError{http.StatusForbidden, "forbidden", "error"})
 }
 
 func TestPolaris(t *testing.T) {
@@ -90,7 +101,7 @@ func TestPolaris(t *testing.T) {
 	if err := testRequest("GET", "/test3", nil, &test3); err == nil {
 		t.Fatal("must error")
 	} else {
-		if e, ok := err.(HTTPError); !ok {
+		if e, ok := err.(TestHTTPError); !ok {
 			t.Fatal("must http error")
 		} else {
 			if e.Status != http.StatusForbidden {
@@ -121,7 +132,7 @@ func testRequest(method string, path string, data io.Reader, v interface{}) erro
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 
-	var e HTTPError
+	var e TestHTTPError
 	if resp.StatusCode != http.StatusOK {
 		e.Status = resp.StatusCode
 

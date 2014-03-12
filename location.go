@@ -25,7 +25,7 @@ func (l *location) invoke(w http.ResponseWriter, r *http.Request, args ...string
 			buf = buf[:runtime.Stack(buf, false)]
 
 			env.WriteError(http.StatusInternalServerError,
-				fmt.Sprintf("panic: %v\n %v", err, buf))
+				fmt.Errorf("panic: %v\n %v", err, buf))
 		}
 
 		env.finish()
@@ -48,7 +48,7 @@ func (l *location) invoke(w http.ResponseWriter, r *http.Request, args ...string
 
 	inNum := m.Type().NumIn()
 	if inNum != len(args)+1 {
-		env.WriteError(http.StatusForbidden, fmt.Sprintf("%s input arguments %d != %d", r.Method, inNum-1, len(args)))
+		env.WriteError(http.StatusForbidden, fmt.Errorf("%s input arguments %d != %d", r.Method, inNum-1, len(args)))
 		return
 	}
 
