@@ -3,6 +3,7 @@ package polaris
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type Env struct {
@@ -52,24 +53,34 @@ func (e *Env) Write(v interface{}) {
 	} else {
 		e.SetContentJson()
 
-		e.WriteBuffer(buf)
+		e.write(buf)
 	}
 }
 
 func (e *Env) WriteString(data string) {
-	if e.finished {
-		return
+	if len(e.Header().Get("Content-type")) == 0 {
+		e.SetContentType("text/plain")
 	}
 
-	e.WriteBuffer([]byte(data))
+	e.write([]byte(data))
 }
 
 func (e *Env) WriteBuffer(data []byte) {
+	if len(e.Header().Get("Content-type")) == 0 {
+		e.SetContentType("application/octet-stream")
+	}
+
+	e.write(data)
+}
+
+func (e *Env) write(data []byte) {
 	if e.finished {
 		return
 	}
 
 	e.finished = true
+
+	e.w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 
 	e.w.WriteHeader(e.Status)
 	e.w.Write(data)
