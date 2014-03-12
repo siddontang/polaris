@@ -80,6 +80,15 @@ func (e *Env) WriteError(status int, err error) {
 	e.WriteString(err.Error())
 }
 
+func (e *Env) Redirect(url string, status int) {
+	e.finished = true
+	http.Redirect(e.w, e.Request, url, status)
+}
+
+func (e *Env) SetCookie(c *http.Cookie) {
+	http.SetCookie(e.w, c)
+}
+
 func (e *Env) finish() {
 	if e.finished {
 		return

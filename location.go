@@ -33,17 +33,17 @@ func (l *location) invoke(w http.ResponseWriter, r *http.Request, args ...string
 
 	envValue := reflect.ValueOf(env)
 
+	m, ok := l.methods[r.Method]
+	if !ok {
+		env.SetStatus(http.StatusMethodNotAllowed)
+		return
+	}
+
 	if prepare, ok := l.methods["PREPARE"]; ok {
 		prepare.Call([]reflect.Value{envValue})
 		if env.finished {
 			return
 		}
-	}
-
-	m, ok := l.methods[r.Method]
-	if !ok {
-		env.SetStatus(http.StatusMethodNotAllowed)
-		return
 	}
 
 	inNum := m.Type().NumIn()
