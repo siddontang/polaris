@@ -34,3 +34,7 @@ see [my chinese blog](http://blog.csdn.net/siddontang/article/details/21088451) 
 
     http.Handle("/", r)
     http.ListenAndServe("127.0.0.1:11181", nil)
+
+# Dependence
+
+    go get github.com/garyburd/redigo/redis
