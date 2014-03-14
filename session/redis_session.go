@@ -1,7 +1,6 @@
 package session
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"strconv"
@@ -11,8 +10,10 @@ import (
 
 type RedisSession struct {
 	sync.Mutex
-	id   string
-	data map[interface{}]interface{}
+	id      string
+	values  map[interface{}]interface{}
+	dirty   bool
+	timeout int
 
 	store *RedisSessionStore
 }
@@ -23,14 +24,15 @@ func (s *RedisSession) ID() string {
 
 func (s *RedisSession) Set(key interface{}, value interface{}) error {
 	s.Lock()
-	s.data[key] = value
+	s.dirty = true
+	s.values[key] = value
 	s.Unlock()
 	return nil
 }
 
 func (s *RedisSession) Get(key interface{}) interface{} {
 	s.Lock()
-	v, ok := s.data[key]
+	v, ok := s.values[key]
 	s.Unlock()
 	if ok {
 		return v
@@ -41,52 +43,43 @@ func (s *RedisSession) Get(key interface{}) interface{} {
 
 func (s *RedisSession) Delete(key interface{}) error {
 	s.Lock()
-	delete(s.data, key)
+	s.dirty = true
+	delete(s.values, key)
 	s.Unlock()
 	return nil
 }
 
-func (s *RedisSession) saveTimeout(c redis.Conn, buf []byte) error {
-	if err := c.Send("SET", s.id, buf); err != nil {
-		return err
-	}
-
-	if err := c.Send("EXPIRE", s.id, s.store.timeout); err != nil {
-		return err
-	}
-
-	if err := c.Flush(); err != nil {
-		return err
-	}
-
-	if _, err := c.Receive(); err != nil {
-		return err
-	}
-
-	if _, err := c.Receive(); err != nil {
-		return err
-	}
-
+func (s *RedisSession) Expire(seconds int) error {
+	s.Lock()
+	s.dirty = true
+	s.timeout = seconds
+	s.Unlock()
 	return nil
 }
 
 func (s *RedisSession) Save() error {
 	s.Lock()
+	if !s.dirty {
+		s.Unlock()
+		return nil
+	}
 
-	buf, err := json.Marshal(s.data)
+	buf, err := s.store.codec.Encode(s.values)
 	if err != nil {
 		s.Unlock()
 		return err
 	}
 
+	s.dirty = false
+
 	s.Unlock()
 
 	c := s.store.pool.Get()
 
-	if s.store.timeout <= 0 {
+	if s.timeout <= 0 {
 		_, err = c.Do("SET", s.id, buf)
 	} else {
-		err = s.saveTimeout(c, buf)
+		_, err = c.Do("SETEX", s.id, s.timeout, buf)
 	}
 	c.Close()
 
@@ -96,7 +89,8 @@ func (s *RedisSession) Save() error {
 func (s *RedisSession) Flush() error {
 	s.Lock()
 
-	s.data = make(map[interface{}]interface{})
+	s.values = make(map[interface{}]interface{})
+	s.dirty = true
 
 	s.Unlock()
 
@@ -110,6 +104,7 @@ func (s *RedisSession) Flush() error {
 type RedisSessionStore struct {
 	pool    *redis.Pool
 	timeout int
+	codec   Codec
 }
 
 func (store *RedisSessionStore) Get(id string) (Session, error) {
@@ -125,13 +120,15 @@ func (store *RedisSessionStore) Get(id string) (Session, error) {
 	s := new(RedisSession)
 	s.store = store
 	s.id = id
-	s.data = make(map[interface{}]interface{})
+	s.dirty = false
+	s.values = make(map[interface{}]interface{})
+	s.timeout = store.timeout
 
 	if buf == nil {
 		return s, nil
 	}
 
-	err = json.Unmarshal(buf, &s.data)
+	s.values, err = store.codec.Decode(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +155,8 @@ func parseRedisDSN(dsn string) (password string, addr string, db int, err error)
 		return
 	}
 
+	addr = seps[0]
+
 	db = 0
 	if len(seps) == 2 {
 		if db, err = strconv.Atoi(seps[1]); err != nil {
@@ -167,11 +166,12 @@ func parseRedisDSN(dsn string) (password string, addr string, db int, err error)
 	return
 }
 
-/*
-   redis data source name(dsn):
-   <password>@<host>:<port>/<db>
-*/
-func NewRedisSessionStore(dsn string, maxIdle int, timeout int) (SessionStore, error) {
+func NewRedisSessionStore(cfg *Config) (SessionStore, error) {
+	timeout := cfg.Timeout
+	codec := cfg.Serializer
+	dsn := cfg.Redis.DSN
+	maxIdle := cfg.Redis.MaxIdle
+
 	password, addr, db, err := parseRedisDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -203,8 +203,17 @@ func NewRedisSessionStore(dsn string, maxIdle int, timeout int) (SessionStore, e
 	store := new(RedisSessionStore)
 
 	store.timeout = timeout
+	if codec == nil {
+		store.codec = GobCodec{}
+	} else {
+		store.codec = codec
+	}
 
 	store.pool = redis.NewPool(f, maxIdle)
 
 	return store, nil
+}
+
+func init() {
+	Register("redis", NewRedisSessionStore)
 }
