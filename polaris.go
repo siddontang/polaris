@@ -57,12 +57,9 @@ func (app *App) Handle(pattern string, handler interface{}) error {
 func (app *App) Run() error {
 	app.running = true
 
-	go func() {
-		http.Handle("/", app.router)
+	http.Handle("/", app.router)
 
-		http.ListenAndServe(app.config.HttpAddr, nil)
-
-	}()
+	http.ListenAndServe(app.config.HttpAddr, nil)
 
 	return nil
 }
