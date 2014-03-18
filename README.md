@@ -27,13 +27,12 @@ see [my chinese blog](http://blog.csdn.net/siddontang/article/details/21088451) 
         env.WriteString("hello " + id)
     }
 
-    r = NewRouter()
+    app := NewApp(configFile)
 
-    r.Handle("/handler1", new(Handler1))
-    r.Handle("/handler2/([0-9]+)", new(Handler2))
+    app.Handle("/handler1", new(Handler1))
+    app.Handle("/handler2/([0-9]+)", new(Handler2))
 
-    http.Handle("/", r)
-    http.ListenAndServe("127.0.0.1:11181", nil)
+    app.Run()
 
 # Dependence
 
