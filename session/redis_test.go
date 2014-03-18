@@ -8,7 +8,7 @@ import (
 func TestRedisSession(t *testing.T) {
 	var config = RedisStoreConfig{
 		Password:  "",
-		Addr:      "10.20.188.112:6379",
+		Addr:      "127.0.0.1:6379",
 		DB:        0,
 		MaxAge:    3600,
 		CodecName: "gob",

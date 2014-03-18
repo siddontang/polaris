@@ -119,7 +119,12 @@ func (d RedisDriver) Open(jsonConfig string) (Store, error) {
 	store := new(RedisStore)
 
 	store.config = cfg
-	store.codec = GetCodec(cfg.CodecName)
+
+	var err error
+	store.codec, err = GetCodec(cfg.CodecName)
+	if err != nil {
+		return nil, err
+	}
 
 	store.pool = redis.NewPool(f, cfg.MaxIdle)
 

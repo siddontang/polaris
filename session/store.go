@@ -24,7 +24,7 @@ var stores = map[string]Driver{}
 
 func Register(name string, d Driver) error {
 	if _, ok := stores[name]; ok {
-		return fmt.Errorf("%s has been registered", name)
+		return fmt.Errorf("session store %s has been registered", name)
 	}
 
 	stores[name] = d
@@ -35,6 +35,6 @@ func Open(name string, config string) (Store, error) {
 	if f, ok := stores[name]; ok {
 		return f.Open(config)
 	} else {
-		return nil, fmt.Errorf("%s has not been registered", name)
+		return nil, fmt.Errorf("session store %s has not been registered", name)
 	}
 }

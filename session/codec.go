@@ -45,19 +45,19 @@ func RegisterCodec(name string, codec Codec) error {
 	defer codecLock.Unlock()
 
 	if _, ok := codecs[name]; ok {
-		return fmt.Errorf("%s has been registered", name)
+		return fmt.Errorf("codec %s has been registered", name)
 	}
 
 	codecs[name] = codec
 	return nil
 }
 
-//get codec by name, or default codec(GobCodec) if name not exist
-func GetCodec(name string) Codec {
+//get codec by name
+func GetCodec(name string) (Codec, error) {
 	if c, ok := codecs[name]; ok {
-		return c
+		return c, nil
 	} else {
-		return GobCodec{}
+		return nil, fmt.Errorf("codec %s has not been registered", name)
 	}
 }
 
