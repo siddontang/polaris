@@ -2,6 +2,7 @@ package polaris
 
 import (
 	"encoding/json"
+	"github.com/siddontang/polaris/context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -12,18 +13,18 @@ import (
 type TestHandler1 struct {
 }
 
-func (h *TestHandler1) Prepare(env *Env) {
+func (h *TestHandler1) Prepare(env *context.Env) {
 
 }
 
-func (h *TestHandler1) Get(env *Env) {
+func (h *TestHandler1) Get(env *context.Env) {
 
 }
 
 type TestHandler2 struct {
 }
 
-func (h *TestHandler2) Get(env *Env, id string) {
+func (h *TestHandler2) Get(env *context.Env, id string) {
 	v := struct {
 		ID   string
 		Name string
@@ -49,27 +50,29 @@ func (e TestHTTPError) Error() string {
 	return string(buf)
 }
 
-func (h *TestHandler3) Get(env *Env) {
+func (h *TestHandler3) Get(env *context.Env) {
 	env.WriteError(http.StatusForbidden, TestHTTPError{http.StatusForbidden, "forbidden", "error"})
 }
 
 func TestPolaris(t *testing.T) {
-	r := NewRouter()
-
-	if err := r.Handle("/test1", new(TestHandler1)); err != nil {
+	app, err := NewApp("./etc/polaris.json")
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := r.Handle("/test2/([0-9]+)", new(TestHandler2)); err != nil {
+	if err := app.Handle("/test1", new(TestHandler1)); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := r.Handle("/test3", new(TestHandler3)); err != nil {
+	if err := app.Handle("/test2/([0-9]+)", new(TestHandler2)); err != nil {
 		t.Fatal(err)
 	}
 
-	http.Handle("/", r)
-	go http.ListenAndServe("127.0.0.1:11181", nil)
+	if err := app.Handle("/test3", new(TestHandler3)); err != nil {
+		t.Fatal(err)
+	}
+
+	go app.Run()
 
 	time.Sleep(1 * time.Second)
 

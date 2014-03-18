@@ -2,6 +2,7 @@ package polaris
 
 import (
 	"fmt"
+	"github.com/siddontang/polaris/context"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -13,10 +14,11 @@ type location struct {
 	pattern       string
 	regexpPattern *regexp.Regexp
 	methods       map[string]reflect.Value
+	app           *App
 }
 
 func (l *location) invoke(w http.ResponseWriter, r *http.Request, args ...string) {
-	env := newEnv(w, r)
+	env := context.NewEnv(w, r)
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -28,8 +30,13 @@ func (l *location) invoke(w http.ResponseWriter, r *http.Request, args ...string
 				fmt.Errorf("panic: %v\n %v", err, buf))
 		}
 
-		env.finish()
+		env.Finish()
 	}()
+
+	if err := l.app.processRequest(env); err != nil {
+		env.WriteError(http.StatusInternalServerError, err)
+		return
+	}
 
 	envValue := reflect.ValueOf(env)
 
@@ -41,7 +48,7 @@ func (l *location) invoke(w http.ResponseWriter, r *http.Request, args ...string
 
 	if prepare, ok := l.methods["PREPARE"]; ok {
 		prepare.Call([]reflect.Value{envValue})
-		if env.finished {
+		if env.IsFinished() {
 			return
 		}
 	}
@@ -62,7 +69,10 @@ func (l *location) invoke(w http.ResponseWriter, r *http.Request, args ...string
 
 	m.Call(in)
 
-	env.finish()
+	if err := l.app.processResponse(env); err != nil {
+		env.WriteError(http.StatusInternalServerError, err)
+		return
+	}
 }
 
 var SupportMethods = []string{"Prepare", "Get", "Post", "Put", "Head", "Delete"}
@@ -73,11 +83,11 @@ func (l *location) checkMethod(handler interface{}, m reflect.Type, name string)
 	nIn := m.NumIn()
 
 	if nIn == 0 || m.In(0).Kind() != reflect.Ptr {
-		return fmt.Errorf("%T:function %s first input argument must *polaris.Env", handler, name)
+		return fmt.Errorf("%T:function %s first input argument must *context.Env", handler, name)
 	}
 
-	if m.In(0).String() != "*polaris.Env" {
-		return fmt.Errorf("%T:function %s first input argument must *polaris.Env", handler, name)
+	if m.In(0).String() != "*context.Env" {
+		return fmt.Errorf("%T:function %s first input argument must *context.Env", handler, name)
 	}
 
 	if name == "Prepare" && nIn > 1 {

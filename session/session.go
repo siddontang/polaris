@@ -1,62 +1,77 @@
 package session
 
-import (
-	"fmt"
-	"sync"
-)
+import ()
 
-type Session interface {
-	//session id
-	ID() string
+type Session struct {
+	Values map[interface{}]interface{}
 
-	//set value by key
-	Set(key interface{}, value interface{}) error
+	MaxAge int
 
-	//get value by key, nil if key not exist
-	Get(key interface{}) interface{}
-
-	//delete value by key
-	Delete(key interface{}) error
-
-	//set session expire time, it will be affected after save
-	Expire(seconds int) error
-
-	//save session to store
-	Save() error
-
-	//delete all data and delete session from store
-	Flush() error
+	id    string
+	store Store
 }
 
-type SessionStore interface {
-	//get or new a session by id
-	Get(id string) (Session, error)
+//session id
+func (s *Session) ID() string {
+	return s.id
 }
 
-var stores = map[string]func(*Config) (SessionStore, error){}
-var storeLock sync.Mutex
-
-func Register(storeName string, newStoreFn func(*Config) (SessionStore, error)) error {
-	storeLock.Lock()
-	defer storeLock.Unlock()
-
-	if _, ok := stores[storeName]; ok {
-		return fmt.Errorf("%s has been registered", storeName)
-	}
-
-	stores[storeName] = newStoreFn
-
+//set value by key
+func (s *Session) Set(key interface{}, value interface{}) error {
+	s.Values[key] = value
 	return nil
 }
 
-func Open(storeName string, cfg *Config) (SessionStore, error) {
-	storeLock.Lock()
-	defer storeLock.Unlock()
+//get value by key, nil if key not exist
+func (s *Session) Get(key interface{}) interface{} {
+	if v, ok := s.Values[key]; ok {
+		return v
+	} else {
+		return nil
+	}
+}
 
-	fn, ok := stores[storeName]
-	if !ok {
-		return nil, fmt.Errorf("%s hasn't been registered", storeName)
+//delete value by key
+func (s *Session) Delete(key interface{}) error {
+	delete(s.Values, key)
+	return nil
+}
+
+//set session expire time, it will be affected after save
+func (s *Session) Expire(seconds int) error {
+	if seconds < 0 {
+		seconds = 0
 	}
 
-	return fn(cfg)
+	s.MaxAge = seconds
+	return nil
+}
+
+//save session to store
+func (s *Session) Save() error {
+	return s.store.Save(s)
+}
+
+//delete all data, delete session from store and regenerate id
+func (s *Session) Flush() error {
+	if err := s.store.Delete(s); err != nil {
+		return err
+	}
+
+	s.Values = make(map[interface{}]interface{})
+
+	s.id = GenerateID()
+	return nil
+}
+
+func NewSession(id string, store Store, maxAge int) *Session {
+	s := new(Session)
+
+	s.id = id
+	s.store = store
+	s.MaxAge = maxAge
+
+	s.Values = make(map[interface{}]interface{})
+
+	return s
 }

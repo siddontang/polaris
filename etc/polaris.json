@@ -1,0 +1,24 @@
+{
+    "http_addr" : "127.0.0.1:11181",
+    "middlewares" : [
+        {
+            "name": "session",
+            "config": {
+                "name" : "polaris_session_id",
+                "path" : "/",
+                "maxage" : 3600,
+                "secure": false,
+                "httponly": true,
+                "store": "redis",
+                "store_config": {
+                    "password" : "",
+                    "addr" : "127.0.0.1:6379",
+                    "db" : 0,
+                    "maxage": 3600,
+                    "codec": "gob",
+                    "maxidle": 16
+                }
+            }
+        }
+    ]
+}

@@ -10,11 +10,13 @@ import (
 type Router struct {
 	literalLocs map[string]*location
 	regexpLocs  []*location
+	app         *App
 }
 
-func NewRouter() *Router {
+func newRouter(app *App) *Router {
 	r := new(Router)
 
+	r.app = app
 	r.literalLocs = make(map[string]*location)
 	r.regexpLocs = make([]*location, 0)
 
@@ -70,6 +72,8 @@ func (router *Router) Handle(pattern string, handler interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	l.app = router.app
 
 	if err = router.regLocation(l, pattern); err != nil {
 		return err

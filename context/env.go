@@ -1,7 +1,8 @@
-package polaris
+package context
 
 import (
 	"encoding/json"
+	"github.com/siddontang/polaris/session"
 	"net/http"
 	"strconv"
 )
@@ -10,15 +11,23 @@ type Env struct {
 	Request *http.Request
 	Status  int
 
+	//context for current request
+	Ctx Context
+
+	//session for current request,
+	Session *session.Session
+
 	w        http.ResponseWriter
 	finished bool
 }
 
-func newEnv(w http.ResponseWriter, r *http.Request) *Env {
+func NewEnv(w http.ResponseWriter, r *http.Request) *Env {
 	e := new(Env)
 
 	e.Request = r
 	e.w = w
+
+	e.Ctx = NewContext()
 
 	e.finished = false
 	e.Status = http.StatusOK
@@ -100,7 +109,7 @@ func (e *Env) SetCookie(c *http.Cookie) {
 	http.SetCookie(e.w, c)
 }
 
-func (e *Env) finish() {
+func (e *Env) Finish() {
 	if e.finished {
 		return
 	}
@@ -108,4 +117,8 @@ func (e *Env) finish() {
 	e.finished = true
 
 	e.w.WriteHeader(e.Status)
+}
+
+func (e *Env) IsFinished() bool {
+	return e.finished
 }
