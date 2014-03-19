@@ -2,7 +2,7 @@
 
 a restful web framework like tornado written by go 
 
-see [my chinese blog](http://blog.csdn.net/siddontang/article/details/21088451) for more
+see [my chinese blog](http://blog.csdn.net/siddontang/article/category/2123135) for more
 
 # Example
 
