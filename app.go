@@ -33,7 +33,7 @@ func NewApp(configFile string) (*App, error) {
 
 	for i, _ := range app.middlewares {
 		app.middlewares[i], err = middleware.Open(c.Middlewares[i].Name,
-			string(c.Middlewares[i].Config))
+			c.Middlewares[i].Config)
 		if err != nil {
 			return nil, err
 		}

@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -17,7 +18,7 @@ type Store interface {
 }
 
 type Driver interface {
-	Open(dsn string) (Store, error)
+	Open(jsonConfig json.RawMessage) (Store, error)
 }
 
 var stores = map[string]Driver{}
@@ -31,9 +32,9 @@ func Register(name string, d Driver) error {
 	return nil
 }
 
-func Open(name string, config string) (Store, error) {
+func Open(name string, jsonConfig json.RawMessage) (Store, error) {
 	if f, ok := stores[name]; ok {
-		return f.Open(config)
+		return f.Open(jsonConfig)
 	} else {
 		return nil, fmt.Errorf("session store %s has not been registered", name)
 	}

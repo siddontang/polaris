@@ -76,17 +76,17 @@ func (m *SessionMiddleware) ProcessResponse(env *context.Env) error {
 type SessoionMiddlewareDriver struct {
 }
 
-func (d SessoionMiddlewareDriver) Open(jsonConfig string) (Middleware, error) {
+func (d SessoionMiddlewareDriver) Open(jsonConfig json.RawMessage) (Middleware, error) {
 	config := new(SessionConfig)
 
-	if err := json.Unmarshal([]byte(jsonConfig), config); err != nil {
+	if err := json.Unmarshal(jsonConfig, config); err != nil {
 		return nil, err
 	}
 
 	m := new(SessionMiddleware)
 
 	var err error
-	m.store, err = session.Open(config.StoreName, string(config.StoreConfig))
+	m.store, err = session.Open(config.StoreName, config.StoreConfig)
 	if err != nil {
 		return nil, err
 	}

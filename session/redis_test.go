@@ -17,7 +17,7 @@ func TestRedisSession(t *testing.T) {
 
 	s, _ := json.Marshal(&config)
 
-	store, err := Open("redis", string(s))
+	store, err := Open("redis", s)
 	if err != nil {
 		t.Fatal(err)
 	}

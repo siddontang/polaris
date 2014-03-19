@@ -86,10 +86,10 @@ type RedisDriver struct {
 }
 
 //json config: json encode RedisStoreConfig
-func (d RedisDriver) Open(jsonConfig string) (Store, error) {
+func (d RedisDriver) Open(jsonConfig json.RawMessage) (Store, error) {
 	cfg := new(RedisStoreConfig)
 
-	if err := json.Unmarshal([]byte(jsonConfig), cfg); err != nil {
+	if err := json.Unmarshal(jsonConfig, cfg); err != nil {
 		return nil, err
 	}
 
