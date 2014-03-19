@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-type Router struct {
+type router struct {
 	literalLocs map[string]*location
 	regexpLocs  []*location
 	app         *App
 }
 
-func newRouter(app *App) *Router {
-	r := new(Router)
+func newRouter(app *App) *router {
+	r := new(router)
 
 	r.app = app
 	r.literalLocs = make(map[string]*location)
@@ -23,7 +23,7 @@ func newRouter(app *App) *Router {
 	return r
 }
 
-func (router *Router) regLocation(l *location, pattern string) error {
+func (router *router) regLocation(l *location, pattern string) error {
 	meta := regexp.QuoteMeta(pattern)
 	if meta == pattern {
 		if _, ok := router.literalLocs[pattern]; ok {
@@ -63,7 +63,7 @@ func (router *Router) regLocation(l *location, pattern string) error {
    handler must be a struct which has one or more methods below:
     Get, Post, Put, Head, Delete
 */
-func (router *Router) Handle(pattern string, handler interface{}) error {
+func (router *router) Handle(pattern string, handler interface{}) error {
 	if len(pattern) == 0 {
 		return fmt.Errorf("pattern cannot be empty")
 	}
@@ -82,7 +82,7 @@ func (router *Router) Handle(pattern string, handler interface{}) error {
 	return nil
 }
 
-func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (router *router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if l, ok := router.literalLocs[path]; ok {
 		l.invoke(w, r)

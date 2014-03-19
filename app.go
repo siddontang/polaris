@@ -14,7 +14,7 @@ var (
 type App struct {
 	config      *Config
 	running     bool
-	router      *Router
+	router      *router
 	middlewares []middleware.Middleware
 }
 
