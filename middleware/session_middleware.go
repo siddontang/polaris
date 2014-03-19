@@ -8,6 +8,8 @@ import (
 	"net/http"
 )
 
+const DefaultSecretKey = "polarissssiralop"
+
 type SessionConfig struct {
 	CookieName     string `json:"name"`
 	CookiePath     string `json:"path"`
@@ -15,8 +17,12 @@ type SessionConfig struct {
 	CookieSecure   bool   `json:"secure"`
 	CookieHttpOnly bool   `json:"httponly"`
 
+	SecretKey string `json:"secret_key"`
+
 	StoreName   string          `json:"store"`
 	StoreConfig json.RawMessage `json:"store_config"`
+
+	secretKey []byte
 }
 
 type SessionMiddleware struct {
@@ -37,7 +43,10 @@ func (m *SessionMiddleware) ProcessRequest(env *context.Env) error {
 			return err
 		}
 	} else {
-		id = c.Value
+		id, err = DecodeSignID(c.Value, m.config.secretKey)
+		if err != nil {
+			return err
+		}
 	}
 
 	var err error
@@ -60,9 +69,14 @@ func (m *SessionMiddleware) ProcessResponse(env *context.Env) error {
 		return err
 	}
 
+	id, err := EncodeSignID(env.Session.ID(), m.config.secretKey)
+	if err != nil {
+		return err
+	}
+
 	c := &http.Cookie{
 		Name:     m.config.CookieName,
-		Value:    env.Session.ID(),
+		Value:    id,
 		Path:     m.config.CookiePath,
 		MaxAge:   m.config.CookieMaxAge,
 		Secure:   m.config.CookieSecure,
@@ -82,6 +96,14 @@ func (d SessoionMiddlewareDriver) Open(jsonConfig json.RawMessage) (Middleware, 
 	if err := json.Unmarshal(jsonConfig, config); err != nil {
 		return nil, err
 	}
+
+	if len(config.SecretKey) == 0 {
+		config.SecretKey = DefaultSecretKey
+	} else if len(config.SecretKey)%16 != 0 {
+		return nil, fmt.Errorf("invalid secret key len %d, must multi 16", len(config.SecretKey))
+	}
+
+	config.secretKey = []byte(config.SecretKey)
 
 	m := new(SessionMiddleware)
 

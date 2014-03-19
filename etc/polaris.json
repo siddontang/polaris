@@ -9,6 +9,7 @@
                 "maxage" : 3600,
                 "secure": false,
                 "httponly": true,
+                "secret_key": "1234567887654321",
                 "store": "redis",
                 "store_config": {
                     "password" : "",
